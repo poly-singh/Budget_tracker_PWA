@@ -1,82 +1,90 @@
-"use strict";
+let db;
 
-const pendingObjectStoreName = `pending`;
+const indexedDB =
+  window.indexedDB ||
+  window.mozIndexedDB ||
+  window.webkitIndexedDB ||
+  window.msIndexedDB ||
+  window.shimIndexedDB;
+  
+// Create a new db request for a "budget" database.
+const request = indexedDB.open('BudgetDB', 1);
 
-// create a new db request for a "budget" database.
-const request = indexedDB.open(`budget`, 2);
+request.onupgradeneeded = function (e) {
+    let db = e.target.result
+    db.createObjectStore('pending', { autoIncrement: true });
+  }
 
-request.onupgradeneeded = event => {
-    const db = request.result;
 
-    // create object store called "pending" and set autoIncrement to true
-    // const db = event.target.result;
-    console.log(event);
-
-    if (!db.objectStoreNames.contains(pendingObjectStoreName)) {
-        db.createObjectStore(pendingObjectStoreName, { autoIncrement: true });
-    }
+request.onerror = function (e) {
+  console.log(`Woops! ${e.target.errorCode}`);
 };
-
-request.onsuccess = event => {
-    console.log(`Success! ${event.type}`);
-    // check if app is online before reading from db
-    if (navigator.onLine) {
-        checkDatabase();
-    }
-};
-
-request.onerror = event => console.error(event);
 
 function checkDatabase() {
-    const db = request.result;
+  console.log('check db invoked');
 
-    // open a transaction on your pending db
-    let transaction = db.transaction([pendingObjectStoreName], `readwrite`);
+  
+  let transaction = db.transaction(['pending'], 'readwrite');
 
-    // access your pending object store
-    let store = transaction.objectStore(pendingObjectStoreName);
+  // access 
+  const store = transaction.objectStore('pending');
 
-    // get all records from store and set to a variable
-    const getAll = store.getAll();
+  
+  const getAll = store.getAll();
 
-    getAll.onsuccess = () => {
-        if (getAll.result.length > 0) {
-            fetch(`/api/transaction/bulk`, {
-                method: `POST`,
-                body: JSON.stringify(getAll.result),
-                headers: {
-                    Accept: `application/json, text/plain, */*`,
-                    "Content-Type": `application/json`
-                }
-            })
-                .then(response => response.json())
-                .then(() => {
-                    // if successful, open a transaction on your pending db
-                    transaction = db.transaction([pendingObjectStoreName], `readwrite`);
+  // If the request was successful
+  getAll.onsuccess = function () {
+    // 
+    if (getAll.result.length > 0) {
+      fetch('/api/transaction/bulk', {
+        method: 'POST',
+        body: JSON.stringify(getAll.result),
+        headers: {
+          Accept: 'application/json, text/plain, */*',
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((response) => response.json())
+        .then((res) => {
+         
+          if (res.length !== 0) {
+            
+            transaction = db.transaction(['pending'], 'readwrite');
 
-                    // access your pending object store
-                    store = transaction.objectStore(pendingObjectStoreName);
+           
+            const currentStore = transaction.objectStore('pending');
 
-                    // clear all items in your store
-                    store.clear();
-                });
-        }
-    };
+            // Clear existing entries because our bulk add was successful
+            currentStore.clear();
+            console.log('Clearing store 🧹');
+          }
+        });
+    }
+  };
 }
 
-// eslint-disable-next-line no-unused-vars
-function saveRecord(record) {
-    const db = request.result;
+request.onsuccess = function (e) {
+  console.log('success');
+  db = e.target.result;
 
-    // create a transaction on the pending db with readwrite access
-    const transaction = db.transaction([pendingObjectStoreName], `readwrite`);
+  // Check if app is online before reading from db
+  if (navigator.onLine) {
+    console.log('Backend online! 🗄️');
+    checkDatabase();
+  }
+};
 
-    // access your pending object store
-    const store = transaction.objectStore(pendingObjectStoreName);
+const saveRecord = (record) => {
+  console.log('Save record invoked');
+  // Create a transaction 
+  const transaction = db.transaction(['pending'], 'readwrite');
 
-    // add record to your store with add method.
-    store.add(record);
-}
+  // Access your BudgetStore object store
+  const store = transaction.objectStore('pending');
 
-// listen for app coming back online
-window.addEventListener(`online`, checkDatabase);
+  // Add record to your store with add method.
+  store.add(record);
+};
+
+// Listen for app coming back online
+window.addEventListener('online', checkDatabase);
