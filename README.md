@@ -6,16 +6,8 @@ This application lets the User to add expenses and deposits to their budget with
 ## Deployment link on heroku
 https://budget-tracker-ps.herokuapp.com/
 
-## Table of contents
-- [Description](##Description)
-- [Usage](##Usage)
-- [Installation](##Installation)
-- [Contributors](##Contributors)
-- [Testing](##Testing)
-- [Repository Link](#Repository)
-- [GitHub Info](#GitHub) 
-
-## User Story
+ ## User Story
+ 
 AS AN avid traveller
 I WANT to be able to track my withdrawals and deposits with or without a data/internet connection
 SO THAT my account balance is accurate when I am traveling
